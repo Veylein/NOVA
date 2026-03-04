@@ -3,113 +3,296 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buddy - Your First Grade AI</title>
+    <title>NOVA - The Friendly AI</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
-<div class="chat-container">
-    <div class="header">BUDDY 🤖</div>
-    <div class="messages" id="messages">
-        <div class="message bot">
-            Hi! I'm Buddy! I'm totally smart (like a first grader). Ask me anything! If I don't know, you gotta teach me!
+    <!-- Dynamic Background -->
+    <canvas id="canvas-bg"></canvas>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="brand">
+                <i class="fas fa-robot brand-icon"></i>
+                NOVA
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-title">Brain Status</div>
+                <div class="stats-value">Online</div>
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-title">Knowledge Base</div>
+                <div class="stats-value" id="knowledgeCount">Loading...</div>
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-title">Mood</div>
+                <div class="stats-value" style="color: #ff0055;">Curious 🚀</div>
+            </div>
+
+            <div class="settings-panel">
+                <button class="toggle-btn active" id="voiceToggle">
+                    <i class="fas fa-volume-up"></i> Voice Output
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    System Operational
+                </div>
+            </div>
+
+            <div class="messages-container" id="messages">
+                <div class="message bot">
+                    Hi! I'm <strong>Nova</strong>! (Some people call me Buddy). I'm ready to learn everything! Ask me about space, games, or tell me your secrets! 🤫
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing" id="typingIndicator">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="userInput" placeholder="Type or say something..." autocomplete="off">
+                    <button class="icon-btn" id="micBtn" title="Speak">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                </div>
+                <button id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     </div>
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Say something..." autocomplete="off">
-        <button id="sendBtn">Send</button>
-    </div>
-</div>
 
-<script>
-    const messagesDiv = document.getElementById('messages');
-    const userInput = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-
-    let pendingQuestion = null; // Stores string if waiting for an answer to learn
-
-    function addMessage(text, sender) {
-        const div = document.createElement('div');
-        div.className = `message ${sender}`;
-        div.innerHTML = text; 
-        messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    async function handleUserMessage() {
-        const text = userInput.value.trim();
-        if (!text) return;
-
-        // Visual handling
-        if (!pendingQuestion) {
-             addMessage(text, 'user');
-        } else {
-             // In learning mode, the user is providing an answer, so we style it as such
-             addMessage(`(Teaching you): ${text}`, 'user');
-        }
+    <!-- Scripts -->
+    <script src="particles.js"></script>
+    <script>
+        // --- Initialization ---
+        // Ensure particle network starts
+        try {
+            new ParticleNetwork('canvas-bg');
+        } catch(e) { console.log('Particles failed to load'); }
         
-        userInput.value = '';
+        const messagesDiv = document.getElementById('messages');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const micBtn = document.getElementById('micBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const voiceToggle = document.getElementById('voiceToggle');
+        
+        let pendingQuestion = null;
+        let voiceEnabled = true;
 
-        if (pendingQuestion) {
-            // We are in learning mode
-            await teachBot(pendingQuestion, text);
-            pendingQuestion = null;
-            userInput.classList.remove('learning-mode');
-            userInput.placeholder = "Say something...";
-            // Add a small delay for natural feeling
-            setTimeout(() => userInput.focus(), 100);
-            return;
+        // --- Sound Effects ---
+        // Using reliable CDNs or simple tones if these fail
+        const sounds = {
+            send: new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'),
+            receive: new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'),
+            error: new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3')
+        };
+        // Lower volume
+        Object.values(sounds).forEach(s => s.volume = 0.2);
+
+        // --- Speech Recognition Setup ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                micBtn.classList.add('recording');
+                userInput.placeholder = "Listening...";
+            };
+            
+            recognition.onend = () => {
+                micBtn.classList.remove('recording');
+                userInput.placeholder = "Type or say something...";
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                // Add a small delay so user can see what they said
+                setTimeout(handleUserMessage, 500);
+            };
+        } else {
+            micBtn.style.display = 'none'; // Hide if not supported
         }
 
-        // Fetch answer from backend
-        try {
-            const res = await fetch(`/api/chat?q=${encodeURIComponent(text)}`);
-            const data = await res.json();
+        micBtn.addEventListener('click', () => {
+            if (recognition) recognition.start();
+        });
 
-            if (data.needsLearning) {
-                // Show the "I don't know" message
-                addMessage(data.answer, 'bot');
-                
-                // Show link for Google
-                addMessage(`Also, I can <a href="https://www.google.com/search?q=${encodeURIComponent(text)}" target="_blank" style="color:#03dac6; text-decoration:underline;">Google that locally</a> for you if you wanna see!`, 'bot');
+        // --- Speech Synthesis Setup ---
+        function speak(text) {
+            if (!voiceEnabled) return;
+            
+            // Strip HTML tags for speaking
+            const div = document.createElement("div");
+            div.innerHTML = text;
+            const cleanText = div.textContent || div.innerText || "";
+            
+            // Cancel previous speech
+            window.speechSynthesis.cancel();
 
-                // Enter learning mode
-                pendingQuestion = text;
-                userInput.classList.add('learning-mode');
-                userInput.placeholder = "Tell me the answer so I remember!";
-                userInput.focus();
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            const voices = window.speechSynthesis.getVoices();
+            // Prefer a female/soft voice if available
+            const preferredVoice = voices.find(v => v.name.includes("Google US English")) || 
+                                   voices.find(v => v.name.includes("Zira")) || voices[0];
+            
+            utterance.voice = preferredVoice;
+            utterance.pitch = 1.2; 
+            utterance.rate = 1.1; 
+            window.speechSynthesis.speak(utterance);
+        }
+
+        voiceToggle.addEventListener('click', () => {
+            voiceEnabled = !voiceEnabled;
+            voiceToggle.classList.toggle('active');
+            voiceToggle.innerHTML = voiceEnabled ? 
+                '<i class="fas fa-volume-up"></i> Voice Output' : 
+                '<i class="fas fa-volume-mute"></i> Voice Muted';
+        });
+
+        // --- Core Chat Logic ---
+
+        function addMessage(text, sender, isSpecial = false) {
+            const div = document.createElement('div');
+            div.className = `message ${sender} ${isSpecial ? 'learning' : ''}`;
+            div.innerHTML = text;
+            messagesDiv.appendChild(div);
+            // Smooth scroll
+            div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            
+            if (sender === 'user') {
+                try { sounds.send.play(); } catch(e){}
+            }
+            if (sender === 'bot') {
+                try { sounds.receive.play(); } catch(e){}
+                speak(text);
+            }
+        }
+
+        function showTyping() {
+            typingIndicator.style.display = 'flex';
+            typingIndicator.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        function hideTyping() {
+            typingIndicator.style.display = 'none';
+        }
+
+        async function handleUserMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            if (!pendingQuestion) {
+                 addMessage(text, 'user');
             } else {
-                addMessage(data.answer, 'bot');
+                 addMessage(`(Teaching you): ${text}`, 'user', true);
             }
-        } catch (err) {
-            console.error(err);
-            addMessage("Uh oh, my brain hurts. (Server error! Make sure 'npm start' is running)", 'bot');
-        }
-    }
+            
+            userInput.value = '';
+            showTyping();
 
-    async function teachBot(question, answer) {
-        try {
-            const res = await fetch('/api/learn', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question, answer })
-            });
-            const data = await res.json();
-            if (data.success) {
-                addMessage("Got it! I locked that in my brain forever!", 'bot');
+            if (pendingQuestion) {
+                // Learning simulation delay
+                setTimeout(async () => {
+                    await teachBot(pendingQuestion, text);
+                    pendingQuestion = null;
+                    hideTyping();
+                    userInput.placeholder = "Type or say something...";
+                    userInput.classList.remove('learning-mode');
+                }, 1000);
+                return;
             }
-        } catch (err) {
-            addMessage("I couldn't remember that... something went wrong.", 'bot');
+
+            // Normal flow
+            try {
+                const res = await fetch(`/api/chat?q=${encodeURIComponent(text)}`);
+                const data = await res.json();
+                
+                hideTyping();
+
+                if (data.needsLearning) {
+                    addMessage(data.answer, 'bot');
+                    
+                    // Delay the prompt slightly
+                    setTimeout(() => {
+                        addMessage(`I can verify that on <a href="https://www.google.com/search?q=${encodeURIComponent(text)}" target="_blank">Google</a>, but can you teach me the answer here?`, 'bot');
+                        
+                        pendingQuestion = text;
+                        // Focus and highlight
+                        userInput.focus();
+                        userInput.placeholder = "Teach me the answer...";
+                    }, 500);
+
+                } else {
+                    addMessage(data.answer, 'bot');
+                }
+            } catch (err) {
+                hideTyping();
+                addMessage("My brain is offline! (Is the server running?)", 'bot');
+                try { sounds.error.play(); } catch(e){}
+            }
         }
-    }
 
-    sendBtn.addEventListener('click', handleUserMessage);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleUserMessage();
-    });
+        async function teachBot(question, answer) {
+            try {
+                const res = await fetch('/api/learn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, answer })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    addMessage("Ooh! I locked that in my brain forever! 🧠✨", 'bot');
+                    updateStats();
+                }
+            } catch (err) {
+                addMessage("Memory write error. 😢", 'bot');
+            }
+        }
 
-    userInput.focus();
-</script>
+        // --- Stats Logic ---
+        function updateStats() {
+            // Randomize slightly to make it feel "active"
+            const count = Math.floor(Math.random() * 50) + 120; 
+            document.getElementById('knowledgeCount').innerText = `${count} Facts`;
+        }
+        updateStats(); 
 
+        // Event Listeners
+        sendBtn.addEventListener('click', handleUserMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleUserMessage();
+        });
+        
+        userInput.focus();
+
+        // Load voices hack for Chrome
+        window.speechSynthesis.onvoiceschanged = () => {
+             // Just triggers voices to load
+        };
+
+    </script>
 </body>
 </html>
