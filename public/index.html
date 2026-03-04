@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buddy - Your First Grade AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">BUDDY 🤖</div>
+    <div class="messages" id="messages">
+        <div class="message bot">
+            Hi! I'm Buddy! I'm totally smart (like a first grader). Ask me anything! If I don't know, you gotta teach me!
+        </div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Say something..." autocomplete="off">
+        <button id="sendBtn">Send</button>
+    </div>
+</div>
+
+<script>
+    const messagesDiv = document.getElementById('messages');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    let pendingQuestion = null; // Stores string if waiting for an answer to learn
+
+    function addMessage(text, sender) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        div.innerHTML = text; 
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function handleUserMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        // Visual handling
+        if (!pendingQuestion) {
+             addMessage(text, 'user');
+        } else {
+             // In learning mode, the user is providing an answer, so we style it as such
+             addMessage(`(Teaching you): ${text}`, 'user');
+        }
+        
+        userInput.value = '';
+
+        if (pendingQuestion) {
+            // We are in learning mode
+            await teachBot(pendingQuestion, text);
+            pendingQuestion = null;
+            userInput.classList.remove('learning-mode');
+            userInput.placeholder = "Say something...";
+            // Add a small delay for natural feeling
+            setTimeout(() => userInput.focus(), 100);
+            return;
+        }
+
+        // Fetch answer from backend
+        try {
+            const res = await fetch(`/api/chat?q=${encodeURIComponent(text)}`);
+            const data = await res.json();
+
+            if (data.needsLearning) {
+                // Show the "I don't know" message
+                addMessage(data.answer, 'bot');
+                
+                // Show link for Google
+                addMessage(`Also, I can <a href="https://www.google.com/search?q=${encodeURIComponent(text)}" target="_blank" style="color:#03dac6; text-decoration:underline;">Google that locally</a> for you if you wanna see!`, 'bot');
+
+                // Enter learning mode
+                pendingQuestion = text;
+                userInput.classList.add('learning-mode');
+                userInput.placeholder = "Tell me the answer so I remember!";
+                userInput.focus();
+            } else {
+                addMessage(data.answer, 'bot');
+            }
+        } catch (err) {
+            console.error(err);
+            addMessage("Uh oh, my brain hurts. (Server error! Make sure 'npm start' is running)", 'bot');
+        }
+    }
+
+    async function teachBot(question, answer) {
+        try {
+            const res = await fetch('/api/learn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question, answer })
+            });
+            const data = await res.json();
+            if (data.success) {
+                addMessage("Got it! I locked that in my brain forever!", 'bot');
+            }
+        } catch (err) {
+            addMessage("I couldn't remember that... something went wrong.", 'bot');
+        }
+    }
+
+    sendBtn.addEventListener('click', handleUserMessage);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleUserMessage();
+    });
+
+    userInput.focus();
+</script>
+
+</body>
+</html>
