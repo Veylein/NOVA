@@ -7,6 +7,12 @@ const fetch = require('node-fetch'); // For Wikipedia API: Ensure this dependenc
 const app = express();
 const PORT = 3001;
 
+// Log all requests
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
