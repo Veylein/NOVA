@@ -4,207 +4,659 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOVA - Virtual Assistant</title>
-    <!-- Use style.css with cache busting query param -->
-    <link rel="stylesheet" href="style.css?v=2">
-    <!-- Font Awesome (CDN) -->
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Inline fallback styles in case external CSS fails -->
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&family=Work+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center;
-            font-size: 20px; transition: opacity 0.5s;
+        /* === RESET & VARIABLES === */
+        :root {
+            --bg-color: #0d1117;
+            --container-bg: rgba(22, 27, 34, 0.7);
+            --accent-color: #58a6ff;
+            --accent-glow: rgba(88, 166, 255, 0.4);
+            --text-color: #c9d1d9;
+            --input-bg: #0d1117;
+            --user-msg-bg: #1f6feb;
+            --bot-msg-bg: #21262d;
+            --border-color: #30363d;
+            --font-main: 'Work Sans', sans-serif;
+            --font-code: 'Roboto Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 10%, #1f2532 0%, #0d1117 100%);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* === PARTICLES CONTAINER === */
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Behind everything */
+            opacity: 0.6;
+        }
+
+        /* === MAIN UI CONTAINER === */
+        .nova-container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 1000px;
+            height: 85vh;
+            background: var(--container-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        /* === SIDEBAR (Responsive) === */
+        .sidebar {
+            width: 260px;
+            background: rgba(13, 17, 23, 0.5);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-code);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .brand i {
+            font-size: 1.2em;
+        }
+
+        .stats-panel {
+            margin-top: 40px;
+        }
+
+        .stat-item {
+            margin-bottom: 20px;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-family: var(--font-code);
+            font-size: 1.25rem;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-toggle {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #8b949e;
+        }
+
+        .btn-toggle.active {
+            background: rgba(88, 166, 255, 0.1);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* === CHAT AREA === */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: transparent;
+        }
+
+        .chat-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-info {
+            font-size: 0.9rem;
+            color: #8b949e;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            scroll-behavior: smooth;
+        }
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+
+        /* Message Bubbles */
+        .message {
+            max-width: 80%;
+            line-height: 1.6;
+            padding: 16px 20px;
+            border-radius: 12px;
+            position: relative;
+            font-size: 1rem;
+            animation: messagePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes messagePop {
+            0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background: var(--bot-msg-bg);
+            border: 1px solid var(--border-color);
+            border-top-left-radius: 2px;
+            color: #e6edf3;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--user-msg-bg);
+            color: white;
+            border-bottom-right-radius: 2px;
+            box-shadow: 0 4px 12px rgba(31, 111, 235, 0.2);
+        }
+
+        .message strong {
+            color: var(--accent-color);
+        }
+
+        /* === INPUT AREA === */
+        .input-area {
+            padding: 24px 30px;
+            background: rgba(13, 17, 23, 0.8);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        textarea#userInput {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            min-height: 52px; /* Roughly 1 line with padding */
+            max-height: 150px;
+            transition: all 0.2s;
+            line-height: 1.5;
+        }
+
+        textarea#userInput:focus {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.02);
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.1);
+        }
+
+        textarea::placeholder {
+            color: #484f58;
+        }
+
+        #sendBtn, #micBtn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: transparent; /* Default transparent for mic */
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        #sendBtn {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #0d1117; /* Dark icon */
+        }
+
+        #sendBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        #micBtn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        #micBtn.recording {
+            color: #ff4d4d;
+            border-color: #ff4d4d;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+        }
+
+        /* === TYPING INDICATOR === */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            background: var(--bot-msg-bg);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border-top-left-radius: 2px;
+            gap: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: #8b949e;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .nova-container {
+                flex-direction: column;
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+                border: none;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                padding: 16px 20px;
+                flex-direction: row;
+                align-items: center;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .stats-panel, .controls span { /* Hide detailed stats/text on mobile */
+                display: none;
+            }
+            .controls {
+                flex-direction: row;
+            }
+            .brand {
+                font-size: 1.2rem;
+            }
         }
     </style>
-    <!-- Markdown Parser -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Particles (Optional) -->
-    <!-- <script src="particles.js"></script> Commented out to isolate issues -->
 </head>
 <body>
 
-    <!-- Loading Screen -->
-    <div id="loading" class="loading-overlay">Initializing NOVA Core...</div>
+    <!-- Particles Background -->
+    <div id="particles-js"></div>
 
-    <!-- Background Canvas -->
-    <div id="canvas-bg"></div>
-
-    <div class="main-container">
+    <div class="nova-container">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="brand">
-                <i class="fas fa-atom brand-icon"></i>
+                <i class="fas fa-atom"></i>
                 <span>NOVA</span>
             </div>
 
-            <!-- Dashboard Stats -->
-            <div class="stats-grid">
-                <div class="stats-card">
-                    <div class="stats-title">Memory Units</div>
-                    <div class="stats-value" id="fact-count">Loading...</div>
+            <div class="stats-panel">
+                <div class="stat-item">
+                    <div class="stat-label">Knowledge Base</div>
+                    <div class="stat-value" id="factCount">...</div>
                 </div>
-                <div class="stats-card">
-                    <div class="stats-title">Status</div>
-                    <div class="stats-value" style="color: #00ff88;">
-                        <i class="fas fa-check-circle"></i> Online
+                <div class="stat-item">
+                    <div class="stat-label">System Status</div>
+                    <div class="stat-value" style="color: #3fb950; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-circle" style="font-size: 0.5em;"></i> ONLINE
                     </div>
                 </div>
             </div>
 
-            <!-- Controls -->
-            <div class="sidebar-footer">
-                <div class="icon-button-toggle active" id="voiceToggleBtn">
-                    <i class="fas fa-volume-up"></i> Voice Active
-                </div>
+            <div class="controls">
+                <button class="btn-toggle active" id="voiceToggle">
+                    <i class="fas fa-volume-up"></i> <span>Voice Output</span>
+                </button>
             </div>
         </aside>
 
-        <!-- Chat Interface -->
-        <main class="chat-area">
+        <!-- Main Chat -->
+        <main class="chat-main">
             <header class="chat-header">
-                <div class="chat-title">Session: Active</div>
+                <span class="session-info">Session ID: <span style="font-family: var(--font-code); color: var(--accent-color);">#8F2A</span></span>
+                <!-- Could put extra buttons here -->
             </header>
 
-            <div class="messages-container" id="messages">
+            <div class="chat-messages" id="messagesContainer">
                 <div class="message bot">
-                    <strong>NOVA:</strong> System initialized. I am listening.
+                    Greetings. I am <strong>NOVA</strong>. I have been updated with a new interface. How may I assist you today?
+                </div>
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
                 </div>
             </div>
 
             <footer class="input-area">
-                <textarea id="userInput" placeholder="Type a message..." rows="1"></textarea>
-                <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                <button id="micBtn" title="Voice Input"><i class="fas fa-microphone"></i></button>
+                <div class="input-wrapper">
+                    <textarea id="userInput" placeholder="Type a message or paste Q:/A: pairs..." rows="1"></textarea>
+                </div>
+                <button id="sendBtn" title="Send Message"><i class="fas fa-paper-plane"></i></button>
             </footer>
         </main>
     </div>
 
+    <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="particles.js"></script> <!-- Ensure this file exists in public/ -->
     <script>
-        // Remove loading screen when loaded
-        window.addEventListener('load', () => {
-            const loader = document.getElementById('loading');
-            loader.style.opacity = '0';
-            setTimeout(() => loader.style.display = 'none', 500);
-            updateStats();
-        });
-
-        // Stats Logic
-        const factCountSpan = document.getElementById('fact-count');
-        async function updateStats() {
+        /* --- CORE LOGIC --- */
+        document.addEventListener('DOMContentLoaded', () => {
+            // Init Particles (Fail-safe)
             try {
-                const res = await fetch('/api/stats');
-                if(res.ok) {
-                    const data = await res.json();
-                    factCountSpan.innerText = (data.totalFacts || 0).toLocaleString();
-                } else {
-                    factCountSpan.innerText = "Offline";
+                if (window.particlesJS) {
+                    particlesJS.load('particles-js', 'particles.json', function() {
+                        console.log('Particles loaded');
+                    });
                 }
             } catch (e) {
+                console.warn('Particles failed to load, continuing without them.', e);
+            }
+
+            loadStats();
+        });
+
+        const messagesContainer = document.getElementById('messagesContainer');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const micBtn = document.getElementById('micBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const voiceToggle = document.getElementById('voiceToggle');
+        const factCountDisplay = document.getElementById('factCount');
+
+        let isVoiceEnabled = true;
+
+        /* --- STATS --- */
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                if (!res.ok) throw new Error("Server error");
+                const data = await res.json();
+                factCountDisplay.innerText = (data.totalFacts || 0).toLocaleString();
+            } catch (e) {
                 console.error("Stats error", e);
-                factCountSpan.innerText = "Error";
+                factCountDisplay.innerText = "Err";
+                appendMessage("⚠️ SYSTEM ALERT: Cannot connect to NOVA Core. Please ensure server is running.", 'bot');
             }
         }
 
-        // Chat Logic
-        const userInput = document.getElementById('userInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const messagesDiv = document.getElementById('messages');
-        let isVoiceEnabled = true;
-
-        document.getElementById('voiceToggleBtn').addEventListener('click', function() {
+        /* --- VOICE TOGGLE --- */
+        voiceToggle.addEventListener('click', () => {
             isVoiceEnabled = !isVoiceEnabled;
-            this.classList.toggle('active');
-            this.innerHTML = isVoiceEnabled ? 
-                '<i class="fas fa-volume-up"></i> Voice Active' : 
-                '<i class="fas fa-volume-mute"></i> Voice Muted';
+            voiceToggle.classList.toggle('active');
+            voiceToggle.querySelector('i').className = isVoiceEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
         });
 
+        /* --- CHAT UTILS --- */
         function appendMessage(text, sender, isHtml = false) {
             const div = document.createElement('div');
             div.className = `message ${sender}`;
-            if(isHtml) div.innerHTML = text;
+            if (isHtml) div.innerHTML = text;
             else div.textContent = text;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Insert before typing indicator
+            messagesContainer.insertBefore(div, typingIndicator);
+            scrollToBottom();
         }
 
-        async function sendMessage() {
+        function showTyping(show) {
+            typingIndicator.style.display = show ? 'flex' : 'none';
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        /* --- SENDING LOGIC --- */
+        async function handleSend() {
             const text = userInput.value.trim();
             if (!text) return;
-            
-            appendMessage(text, 'user');
+
+            // Reset input
             userInput.value = '';
-            userInput.style.height = 'auto';
+            userInput.style.height = 'auto'; // Reset height
+            appendMessage(text, 'user');
+            showTyping(true);
 
             try {
-                // Bulk Learning Check
+                // 1. Check for Bulk Learning Pattern (Q: ... A: ...)
                 if (text.includes('Q:') && text.includes('A:')) {
-                     // Simple heuristic for bulk
-                     const lines = text.split('\n');
-                     // Convert to items... (simplified for now)
-                     const items = [];
-                     let q = null;
-                     lines.forEach(l => {
-                         if(l.trim().startsWith('Q:')) q = l.replace('Q:','').trim();
-                         else if(l.trim().startsWith('A:') && q) {
-                             items.push({ questions:[q], answer: l.replace('A:','').trim() });
-                             q = null;
-                         }
-                     });
-                     
-                     if(items.length > 0) {
-                         const res = await fetch('/api/learn-batch', {
-                             method: 'POST', 
-                             headers: {'Content-Type': 'application/json'},
-                             body: JSON.stringify({ items })
-                         });
-                         const data = await res.json();
-                         appendMessage(data.message, 'bot');
-                         if(isVoiceEnabled) speak(data.message);
-                         updateStats();
-                         return;
-                     }
+                    await processBulkLearning(text);
+                    return;
                 }
 
-                // Normal Chat
+                // 2. Normal Chat
                 const res = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: text })
                 });
+
                 const data = await res.json();
-                
-                // Parse markdown
-                const html = marked.parse(data.reply);
-                appendMessage(html, 'bot', true);
-                
-                if(isVoiceEnabled) speak(data.reply);
+                showTyping(false);
+
+                // Render Markdown
+                const htmlResponse = marked.parse(data.reply);
+                appendMessage(htmlResponse, 'bot', true);
+
+                if (isVoiceEnabled) speak(data.reply);
+                loadStats(); // Update stats if learning happened
 
             } catch (err) {
+                showTyping(false);
+                appendMessage("Error: Could not reach NOVA servers.", 'bot');
                 console.error(err);
-                appendMessage("Connection error.", 'bot');
             }
         }
 
-        userInput.addEventListener('keydown', (e) => {
-            if(e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+        async function processBulkLearning(rawText) {
+            // Simple Parser
+            const lines = rawText.split('\n');
+            const items = [];
+            let currentQ = null;
+
+            lines.forEach(line => {
+                const tLine = line.trim();
+                if (tLine.startsWith('Q:')) {
+                    currentQ = tLine.substring(2).trim();
+                } else if (tLine.startsWith('A:') && currentQ) {
+                    const currentA = tLine.substring(2).trim();
+                    items.push({ questions: [currentQ], answer: currentA });
+                    currentQ = null; // Reset
+                }
+            });
+
+            if (items.length > 0) {
+                const res = await fetch('/api/learn-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items })
+                });
+                const result = await res.json();
+                showTyping(false);
+                appendMessage(`Processed ${items.length} new items. ${result.message}`, 'bot');
+                loadStats();
+            } else {
+                showTyping(false);
+                appendMessage("I couldn't detect any valid Q: / A: pairs.", 'bot');
             }
-            // Auto resize
-            setTimeout(() => {
-                userInput.style.height = 'auto';
-                userInput.style.height = userInput.scrollHeight + 'px';
-            }, 0);
+        }
+
+        /* --- INPUT EVENTS --- */
+        sendBtn.addEventListener('click', handleSend);
+        
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
         });
 
-        sendBtn.addEventListener('click', sendMessage);
+        // Auto-expand textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
 
+        /* --- SPEECH SYNTHESIS --- */
         function speak(text) {
             if (!window.speechSynthesis) return;
-            const u = new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g, ''));
+            // Strip HTML for speech
+            const cleanText = text.replace(/<[^>]*>?/gm, '');
+            const u = new SpeechSynthesisUtterance(cleanText);
+            // Try specific voices
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.name.includes('Google US English')) || 
+                              voices.find(v => v.name.includes('Samantha')) || 
+                              voices[0];
+            if (preferred) u.voice = preferred;
             window.speechSynthesis.speak(u);
         }
+
+        /* --- SPEECH RECOGNITION --- */
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+
+            micBtn.addEventListener('click', () => {
+                if (micBtn.classList.contains('recording')) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            });
+
+            recognition.onstart = () => {
+                micBtn.classList.add('recording');
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('recording');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                userInput.style.height = 'auto'; // Recalc height
+                userInput.style.height = (userInput.scrollHeight) + 'px';
+                handleSend(); // Auto-send
+            };
+        } else {
+            micBtn.style.display = 'none'; // Hide if not supported
+        }
+
     </script>
 </body>
 </html>

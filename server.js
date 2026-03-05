@@ -1,11 +1,13 @@
 const express = require('express');
+console.log("Loading modules...");
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch'); // For Wikipedia API: Ensure this dependency exists in package.json or install it
 
+console.log("Modules loaded.");
 const app = express();
-const PORT = 3001;
+const PORT = 3002;
 
 // Log all requests
 app.use((req, res, next) => {
