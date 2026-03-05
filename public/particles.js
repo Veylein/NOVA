@@ -114,7 +114,3 @@ class Particle {
         ctx.shadowBlur = 0;
     }
 }
-
-// Initialize when execution context is ready, but inside index.html script tag effectively.
-// Start it immediately for this file context
-// new ParticleNetwork('canvas-bg');
