@@ -317,7 +317,7 @@ body {
     box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
 }
 
-input[type="text"] {
+input[type="text"], textarea {
     flex: 1;
     background: transparent;
     border: none;
@@ -327,6 +327,9 @@ input[type="text"] {
     font-family: 'Nunito', sans-serif;
     outline: none;
     width: 100%;
+    resize: none; /* Disable manual resize */
+    height: 54px; /* Match previous input height */
+    overflow-y: hidden; /* Hide scrollbar initially */
 }
 
 .icon-btn {

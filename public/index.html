@@ -66,7 +66,7 @@
 
             <div class="input-area">
                 <div class="input-wrapper">
-                    <input type="text" id="userInput" placeholder="Type or say something..." autocomplete="off">
+                    <textarea id="userInput" placeholder="Type, paste bulk Q: A:, or say something..." rows="1" autocomplete="off"></textarea>
                     <button class="icon-btn" id="micBtn" title="Speak">
                         <i class="fas fa-microphone"></i>
                     </button>
@@ -204,6 +204,37 @@
             const text = userInput.value.trim();
             if (!text) return;
 
+            // Check for bulk learning pattern (Q: ... A: ...)
+            const bulkRegex = /Q:\s*([\s\S]+?)\s*\nA:\s*([\s\S]+?)(?=(?:\n\s*Q:|$))/gi;
+            const matches = [...text.matchAll(bulkRegex)];
+
+            if (matches.length > 0) {
+                addMessage(text.replace(/\n/g, '<br>'), 'user');
+                userInput.value = '';
+                showTyping();
+
+                const items = matches.map(m => ({
+                    question: m[1].trim(),
+                    answer: m[2].trim()
+                }));
+
+                try {
+                    const res = await fetch('/api/learn-batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items })
+                    });
+                    const data = await res.json();
+                    hideTyping();
+                    addMessage(data.message || "Bulk learning complete!", 'bot');
+                    updateStats();
+                } catch (e) {
+                    hideTyping();
+                    addMessage("My brain hurts! Something went wrong with learning those.", 'bot');
+                }
+                return;
+            }
+
             if (!pendingQuestion) {
                  addMessage(text, 'user');
             } else {
@@ -273,17 +304,35 @@
         }
 
         // --- Stats Logic ---
-        function updateStats() {
-            // Randomize slightly to make it feel "active"
-            const count = Math.floor(Math.random() * 50) + 120; 
-            document.getElementById('knowledgeCount').innerText = `${count} Facts`;
+        async function updateStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                document.getElementById('knowledgeCount').innerText = `${data.count} Facts`;
+            } catch (e) {
+                document.getElementById('knowledgeCount').innerText = `Brain Offline`;
+            }
         }
         updateStats(); 
 
         // Event Listeners
         sendBtn.addEventListener('click', handleUserMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleUserMessage();
+        
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleUserMessage();
+            }
+        });
+
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            if (this.value) {
+                this.style.height = (this.scrollHeight) + 'px';
+            } else {
+                this.style.height = ''; 
+            }
         });
         
         userInput.focus();

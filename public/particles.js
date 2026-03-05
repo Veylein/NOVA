@@ -52,7 +52,7 @@ class ParticleNetwork {
 
     drawConnections() {
         for (let i = 0; i < this.particles.length; i++) {
-            for (let j = i; j < this.particles.length; j++) {
+            for (let j = i + 1; j < this.particles.length; j++) {
                 const p1 = this.particles[i];
                 const p2 = this.particles[j];
                 const dx = p1.x - p2.x;

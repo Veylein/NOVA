@@ -57,6 +57,28 @@ function saveLearned(key, value) {
     fs.writeFileSync(learnedPath, JSON.stringify(learned, null, 2));
 }
 
+function saveLearnedBatch(items) {
+    const learnedPath = path.join(MEMORY_DIR, 'learned.json');
+    let learned = {};
+    
+    try {
+        if (fs.existsSync(learnedPath)) {
+            learned = JSON.parse(fs.readFileSync(learnedPath, 'utf8'));
+        }
+    } catch (e) {
+        learned = {};
+    }
+
+    items.forEach(item => {
+        if (item.question && item.answer) {
+             const key = item.question.toLowerCase().trim();
+             learned[key] = item.answer;
+        }
+    });
+
+    fs.writeFileSync(learnedPath, JSON.stringify(learned, null, 2));
+}
+
 function findBestMatch(input, memory) {
     const lowerInput = input.toLowerCase();
     
@@ -131,6 +153,25 @@ app.post('/api/learn', (req, res) => {
     saveLearned(key, answer);
     
     res.json({ success: true, message: "Yay! I learned something new!" });
+});
+
+app.post('/api/learn-batch', (req, res) => {
+    const { items } = req.body;
+    if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Missing or invalid data' });
+
+    saveLearnedBatch(items);
+    
+    res.json({ success: true, message: `Whoa! I learned ${items.length} new things at once! My brain is getting bigger! 🧠` });
+});
+
+app.get('/api/stats', (req, res) => {
+    const memory = loadMemory();
+    const count = Object.keys(memory).length;
+    res.json({ 
+        count: count,
+        status: 'Online',
+        mood: 'Curious 🚀' // Could be dynamic later
+    });
 });
 
 app.listen(PORT, () => {
